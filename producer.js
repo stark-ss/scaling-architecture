@@ -39,17 +39,6 @@ async function job(taskType,payload,prior,idpkey) {
     }
 }
 
-async function run(){
-    await job('send mail', { recipient: 'user@aa.com', template: 'welcome'},0,'aa0-qaq00qqssqq1aaa11241s');
-    await job('send mail', { recipient: 'user@ana.com', template: 'welcome'},1,'6611aqssqqqqaqa561');
-    await job('send text', { recipient: 'user@ana.com', template: 'welcome'},2,'15waaqq1assqqqq0');
-    await job('send text', { recipient: 'user@ana.com', template: 'welcome'},2,'15104aqqssqqqqaaq5');
-    await job('send text', { recipient: 'user@ana.com', template: 'welcome'},2,'15104aaaqqq5as4aaqa7');
-
-    await pool.end();
-     await redis.quit();
-}
-
 
 async function generate() {
 
