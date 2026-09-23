@@ -1,5 +1,5 @@
 # Distributed Job Processing & Queue System
-A resilient, production-grade distributed background job queue built with Node.js, Redis, and PostgreSQL. This project is designed to handle asynchronous task execution with support for multi-level priority queues, dynamic rate limiting, TTL-based heartbeats, automated crash recovery via a background Watcher process, exponential backoff retries, and a Dead-Letter Queue (DLQ).
+A resilient, production-grade distributed background job queue built with Node.js, Redis, and PostgreSQL. This project is designed to handle asynchronous task execution with support for multi-level priority queues, metrics-driven auto-scaling via IPC, dynamic rate limiting, TTL-based heartbeats, automated crash recovery via a background Watcher process, exponential backoff retries, and a Dead-Letter Queue (DLQ).
 
 ## 🚀 Tech Stack
 * **Runtime: Node.js**
@@ -26,36 +26,58 @@ A resilient, production-grade distributed background job queue built with Node.j
 **4.** **Metrics Reporter (metrics.js)**
 * Aggregates real-time system performance metrics, tracking queue lengths, processing throughput, success/failure counts, and average durations.
 
+**5.** **Scaler (scaler.js)**
+* Monitors global Redis queue depths and worker counts in real-time.
+* Dynamically forks child worker processes up to a defined ceiling and scales them down safely using non-blocking IPC (graceful_shutdown) messages.
+
+**6.** **Scheduler (scheduler.js)**
+* Periodically evaluates the delayed sorted set (q:delayed) and automatically promotes matured tasks back into the active priority queues.
+
 ## 🏗️ System Architecture
 
 ```text
-               API / Producer
-                     │
-                     ▼
-             ┌───────────────┐
-             │ Redis (Queue) │
-             └───────┬───────┘
-                     │
-            ┌────────┼────────┐
-            ▼        ▼        ▼
-          Worker   Worker   Worker
-            │        │        │
-            └────────┼────────┘
-                     ▼
-              PostgreSQL (DB)
+                        API / Producer
+                               │
+                               ▼
+     ┌──────────────────────────────────────────────────┐
+     │                   Redis Queues                   │
+     │  (q:jobs2, q:jobs1, q:jobs0, q:delayed, q:dlq)   │
+     └───────┬──────────────────────────▲───────────▲───┘
+             │ (Monitor & Fork)         │           │
+             ▼                          │           │
+          Scaler                        │           │ (Orphan Rescue)
+             │                          │           │
+             │                          │           │
+     ┌───────────────┐                  │           │
+     │ Worker Pool   │                  │           │
+     │  - Worker 1   │                  │           │          
+     │  - Worker 2   │                  │           │          
+     └───────┬───────┘                  │           │                
+             │ (State & Persistence)    │           │          
+             ▼                          │           │          
+     PostgreSQL (DB)                    │           │       
+     ┌───────────────┐                  │           │          
+     │   Scheduler   │ ─────────────────┘           │          
+     │ (Delayed Jobs)│                              │          
+     └───────────────┘                              │           
+     ┌───────────────┐                              │          
+     │    Watcher    │ ─────────────────────────────┘          
+     │(Orphan/Crash) │                                         
+     └───────────────┘
 ```
 # 📁 Project Structure
 ```text
 scaling/
 ├── backend/
-│   ├── .env               # Database credentials & environment secrets (Git-ignored)
-│   ├── .gitignore         # Ignores node_modules, .env, and local artifacts
-│   ├── package.json       # Project dependencies and script configurations
+│   ├── .env              # Database credentials & environment secrets (Git-ignored)
+│   ├── .gitignore        # Ignores node_modules, .env, and local artifacts
+│   ├── package.json      # Project dependencies and script configurations
 │   ├── package-lock.json
-│   ├── producer.js        # Job generator and API injector[cite: 2, 7]
-│   ├── worker.js          # Concurrent task processor, rate limiter & retry handler[cite: 4, 8]
-│   ├── watcher.js         # Fault-tolerance service for crash recovery[cite: 3, 6]
-│   └── metrics.js         # Real-time dashboard performance logger[cite: 1]
-
+│   ├── producer.js       # Job generator and database-backed API injector
+│   ├── scaler.js         # Metrics-driven autoscaling controller via IPC
+│   ├── worker.js         # Concurrent task processor, atomic Lua script handler & rate limiter
+│   ├── scheduler.js      # Delayed job promotion manager
+│   ├── watcher.js        # Fault-tolerance service for automated crash and orphan recovery
+│   └── metrics.js        # Real-time dashboard performance and throughput logger
 
   
