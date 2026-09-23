@@ -42,7 +42,7 @@ async function job(taskType,payload,prior,idpkey) {
 
 async function generate() {
 
-    for(let i=1;i<=10;i++){
+    for(let i=1;i<=1000;i++){
         let jobID=crypto.randomUUID();
         let type='mail';
         let prior=0;
