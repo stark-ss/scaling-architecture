@@ -117,7 +117,9 @@ async function concurrent(jobId,qname) {
 
 
                     if(currentattempt<retries){
-                        const delay=Math.pow(2,currentattempt+1)*1000;
+                        const baseDelay=Math.pow(2,currentattempt+1)*1000;
+                        const jit=Math.random()*2000;
+                        const delay=baseDelay+jit;
                         const executeAt=Date.now()+delay;
 
                         await pool.query(`update jobs set attempts=attempts+1,status='queued' where id=$1`,[jobId]);

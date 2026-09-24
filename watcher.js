@@ -41,6 +41,12 @@ async function watcher() {
 
                     const job=dbCheck.rows[0];
 
+                    if(job.status==='completed' || job.status==='failed'){
+                        await redis.lrem('q:processing',1,jobId);
+                        await redis.del(`hb:${jobId}`);
+                        continue;
+                    }
+
                     if(job.run_at){
                         const runTime=Date.now()-new Date(job.run_at).getTime();
                         if(runTime<3000){
